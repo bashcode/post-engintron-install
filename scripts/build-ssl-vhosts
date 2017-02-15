@@ -1,0 +1,220 @@
+#!/bin/bash
+#
+# Builds Nginx SSL vhosts from cPanel userdata configuration files
+# by Xtudio Networks S.L.U
+# https://www.sered.net
+###############################################################
+
+## Static file extensions (separate each extension with a pipe)
+static_ext="gif|jpg|jpeg|png|bmp|ico|wmv|3gp|avi|mpg|mpeg|swf|flv|mp3|mp4|mid|js|css|wml|html|htm"
+
+## Nginx path (e.g. /etc/nginx)
+nginx_path="/etc/nginx"
+
+## Nginx config path (e.g. $nginx_path/conf)
+nginx_conf_path="$nginx_path"
+
+## Port Apache is configured to listen on
+apache_port="80"
+
+# new route for SSL pem
+ssl_pem_path="$nginx_path/ssl.cert.d"
+
+#######################################################################
+############## DO NOT MODIFY ANYTHING BELOW THIS LINE! ################
+#######################################################################
+initial() {
+	if [ -f $nginx_conf_path/vhosts.ssl.conf ]; then
+		rm -f $nginx_conf_path/vhosts.ssl.conf
+	fi
+	#s_ip=$( grep ^ADDR /etc/wwwacct.conf | awk {'print $NF'} | awk 'END { print }' )
+	s_ip=$( hostname -i )
+}
+build_user_list() {
+	user_list=( $(awk '{print $1}' /etc/trueuserowners | cut -d: -f1 | grep -v "#userowners") )
+	if [ ${#user_list[@]} -gt 0 ]; then
+		#echo "[+] Found ${#user_list[@]} users."
+		for user in ${user_list[@]}; do
+			gen_vhosts
+		done
+	else
+		#echo "[!] Error! No users found."
+		exit 0
+	fi
+}
+gen_vhost_conf() {
+	cat > "$nginx_conf_path/vhost.ssl.d/$user/${dom}.conf"  << EOF
+server {
+    listen $s_ip:443 ssl http2;
+    server_name $server_name ${server_aliases[@]};
+    ssl on;
+    ssl_certificate $ssl_pem_path/${dom}_cert;
+    ssl_certificate_key $ssl_key;
+    ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+    ssl_prefer_server_ciphers on;
+    ssl_ciphers "EECDH+AESGCM:EDH+AESGCM:AES256+EECDH:AES256+EDH";
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 5m;
+    #.............. OCSP stapling protection for security start ....................
+    ssl_stapling on;
+    ssl_stapling_verify on;
+    ssl_trusted_certificate $ssl_ca;
+    resolver 127.0.0.1 8.8.8.8 4.2.2.1 8.8.4.4 4.2.2.2 valid=300s;
+    resolver_timeout 5s;
+    #.............. OCSP stapling protection for security end....................
+    location = /favicon.ico {
+        log_not_found off;
+    }
+    access_log /usr/local/apache/domlogs/$dom-bytes_log combined;
+    access_log /usr/local/apache/domlogs/$dom-ssl_log combined;
+
+    referer_hash_bucket_size 512;
+    # Static files directly from nginx
+    location ~* ^.+.(jpg|jpeg|gif|png|ico|zip|tgz|gz|rar|bz2|iso|doc|xls|exe|pdf|ppt|txt|tar|mid|midi|wav|bmp|rtf|mp3|ogv|ogg|flv|swf|mpeg|mpg|mpeg4|mp4|avi|wmv|js|css|3gp|sis|sisx|nth|svg|svgz)$
+{
+        expires 30d;
+        add_header Pragma public;
+        add_header Cache-Control "public, must-revalidate, proxy-revalidate";
+        root /home/$user/public_html;
+        error_page 404 = @apache;
+        log_not_found off;
+    }
+    # Slowloris Dos Attack Protection
+    client_body_timeout 180s;
+    client_header_timeout 5s;
+    keepalive_requests 100;
+    keepalive_timeout 60s;
+    # Symlink attack
+    disable_symlinks on from=\$document_root;
+    autoindex on;
+    # Disable direct access to .ht files and folders
+    location ~ /\.ht {
+          deny all;
+    }
+    # Access all cpanel services
+    location ~* ^/(cpanel|webmail|whm|bandwidth|img-sys|java-sys|mailman/archives|pipermail|sys_cpanel|cgi-sys|mailman) {
+        proxy_pass https://$s_ip:80;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+    }
+    # Enabled MP4 streaming
+    location ~ .mp4$ {
+        mp4;
+        mp4_buffer_size 4M;
+        mp4_max_buffer_size 10M;
+    }
+
+    location @apache {
+        internal;
+        # Internal 404 redirect of static file to apache
+        access_log off;
+        log_not_found off;
+        client_max_body_size 2000m;
+        client_body_buffer_size 512k;
+        proxy_buffering on;
+        proxy_send_timeout 300s;
+        proxy_read_timeout 300s;
+        proxy_buffer_size 64k;
+        proxy_buffers 32 64k;
+        proxy_busy_buffers_size 128k;
+        proxy_temp_file_write_size 128k;
+        proxy_connect_timeout 300s;
+        proxy_http_version 1.1;
+        proxy_set_header Range "";
+        proxy_pass https://$s_ip:1443;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_redirect off;
+    }
+    location / {
+    access_log off;
+        log_not_found off;
+        client_max_body_size 2000m;
+        client_body_buffer_size 512k;
+        proxy_buffering on;
+        proxy_send_timeout 300s;
+        proxy_read_timeout 300s;
+        proxy_buffer_size 64k;
+        proxy_buffers 32 64k;
+        proxy_busy_buffers_size 128k;
+        proxy_temp_file_write_size 128k;
+        proxy_connect_timeout 300s;
+        proxy_http_version 1.1;
+        proxy_set_header Range "";
+        proxy_pass https://$s_ip:1443;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_redirect off;
+
+    }
+}
+
+
+EOF
+}
+
+create_ssl_pem() {
+	# create nginx SSL pem for all domains
+	for domains in $(cat /etc/localdomains | cut -d: -f1); do
+	 	python $nginx_path/scripts/fix-ssl.py $domains #&> /dev/null;
+	done
+}
+
+gen_vhosts() {
+	 if [ -f $nginx_conf_path/vhost.ssl.d/$user.conf ]; then
+		 rm -f $nginx_conf_path/vhost.ssl.d/$user.conf
+	 fi
+	 if [ -d $nginx_conf_path/vhost.ssl.d/$user ]; then
+		 rm -rf $nginx_conf_path/vhost.ssl.d/$user
+	 fi
+
+	for i in $(find /var/cpanel/userdata/$user -type f ! -name '*.cache' -a ! -name '*.db' -a ! -name cache.stor -a ! -name cache -a ! -name '*.json' -a ! -name main | awk -F'/' '{print $NF}' | grep 'SSL' | sort -u); do
+	touch $nginx_conf_path/vhosts.ssl.conf
+        echo "include $nginx_conf_path/vhost.ssl.d/$user.conf;" >> $nginx_conf_path/vhosts.ssl.conf
+        done
+
+	if [ -d /var/cpanel/userdata/$user ]; then
+		mkdir -p $nginx_conf_path/vhost.ssl.d/$user
+  		dom_list=( $(find /var/cpanel/userdata/$user -type f ! -name '*.cache' -a ! -name '*.db' -a ! -name cache.stor -a ! -name cache -a ! -name '*.json' -a ! -name main | awk -F'/' '{print $NF}' | grep 'SSL' | sort -u))
+		#echo "[+] Found ${#dom_list[@]} domain(s) under $user."
+		for dom in ${dom_list[@]}; do
+			echo -ne "[+] Generating vhost for $dom .. \n"
+			if [[ "$dom" == *\*.* ]]; then
+				server_name=$( grep ^servername /var/cpanel/userdata/$user/$dom | cut -d: -f2 | awk {'print $NF'} | sed -e 's/"//g' -e 's/*/_wildcard_/g' )
+				server_aliases=$dom
+				doc_root=$( grep ^documentroot /var/cpanel/userdata/$user/$dom | cut -d: -f2 | awk {'print $NF'} )
+				ip=$( grep ^ip: /var/cpanel/userdata/$user/$dom | cut -d: -f2 | awk {'print $NF'} )
+				#dom_log=$( grep -m1 target /var/cpanel/userdata/$user/$dom | grep -v "bytes_log$" | cut -d: -f2 | awk {'print $NF'} )
+				dom_log="/usr/local/apache/domlogs/$server_name"
+				gen_vhost_conf
+				echo "include $nginx_conf_path/vhost.ssl.d/$user/$dom.conf;" >> $nginx_conf_path/vhost.ssl.d/$user.conf
+			else
+				server_name=$( grep ^servername /var/cpanel/userdata/$user/$dom | cut -d: -f2 | awk {'print $NF'} )
+				server_aliases=( $(grep ^serveralias /var/cpanel/userdata/$user/$dom | cut -d: -f2) )
+				doc_root=$( grep ^documentroot /var/cpanel/userdata/$user/$dom | cut -d: -f2 | awk {'print $NF'} )
+				ip=$( grep ^ip: /var/cpanel/userdata/$user/$dom | cut -d: -f2 | awk {'print $NF'} )
+				ssl_cert=( $(grep ^sslcertificatefile /var/cpanel/userdata/$user/${dom} | cut -d: -f2) )
+                		ssl_key=( $(grep ^sslcertificatekeyfile /var/cpanel/userdata/$user/${dom} | cut -d: -f2) )
+                		ssl_ca=( $(grep ^sslcacertificatefile /var/cpanel/userdata/$user/${dom} | cut -d: -f2) )
+				#dom_log=$( grep -m1 target /var/cpanel/userdata/$user/$dom | grep -v "bytes_log$" | cut -d: -f2 | awk {'print $NF'} )
+				dom_log="/usr/local/apache/domlogs/$server_name"
+				gen_vhost_conf
+				echo "include $nginx_conf_path/vhost.ssl.d/$user/${dom}.conf;" >> $nginx_conf_path/vhost.ssl.d/$user.conf
+			fi
+			#echo "done."
+		done
+	else
+		#echo "[!] Error! The user $user does not exist!"
+		exit 1
+	fi
+}
+initial
+create_ssl_pem
+build_user_list
+
+
