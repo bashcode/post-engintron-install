@@ -128,9 +128,12 @@ def build_ssl_cert(domain):
         user=userdata[domain][1]
         dfile=ssldoms[domain][0]
         domconf='/var/cpanel/userdata/'+user+'/'+dfile+'_SSL'
-    
-
+    else:
+        print "No ssl"
+        sys.exit()
+        
     print "CC "+domconf
+    
     if os.path.exists(domconf):
         with open(domconf) as domfile:
             lines=domfile.read().splitlines()
@@ -178,3 +181,4 @@ dominio = sys.argv[1]
 
 
 build_ssl_cert(dominio)
+
