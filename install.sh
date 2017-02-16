@@ -235,7 +235,7 @@ uninstall() {
 
 	echo "[+] Finished removing post-engintron-install!"
 	echo -e "[+] Please remove the following cronjob \"$GREEN * * * * * $nginx_path/scripts/apache-conf-check &>/dev/null $RESET\" from root's crontab if you set it up."
-
+}
 
 [ -z $ACTION ] && options && exit 1
 
@@ -246,4 +246,3 @@ case $ACTION in
 esac
 
 exit 0
-
