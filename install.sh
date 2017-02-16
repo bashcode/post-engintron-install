@@ -30,12 +30,12 @@ function apache_ssl_change_port {
  	echo "=== Switch Apache SSL to port 1443, distill changes & restart Apache ==="
  
  	if [ -f /usr/local/cpanel/bin/whmapi1 ]; then
- 		/usr/local/cpanel/bin/whmapi1 set_tweaksetting key=apache_ssl_port value=0.0.0.0:1443
+ 		/usr/local/cpanel/bin/whmapi1 set_tweaksetting key=apache_ssl_port value=0.0.0.0:1443 &> /dev/null
  	else
  		if grep -Fxq "apache_ssl_port=" /var/cpanel/cpanel.config
  		then
  			sed -i 's/^apache_ssl_port=.*/apache_ssl_port=0.0.0.0:1443/' /var/cpanel/cpanel.config
- 			/usr/local/cpanel/whostmgr/bin/whostmgr2 --updatetweaksettings
+ 			/usr/local/cpanel/whostmgr/bin/whostmgr2 --updatetweaksettings &> /dev/null
  		else
  			echo "apache_ssl_port=0.0.0.0:1443" >> /var/cpanel/cpanel.config
  		fi
@@ -45,9 +45,9 @@ function apache_ssl_change_port {
  	echo ""
  
  	echo "=== Distill changes in Apache's configuration and restart Apache ==="
- 	/usr/local/cpanel/bin/apache_conf_distiller --update
- 	/scripts/rebuildhttpdconf
- 	/scripts/restartsrv httpd
+ 	/usr/local/cpanel/bin/apache_conf_distiller --update &> /dev/null
+ 	/scripts/rebuildhttpdconf &> /dev/null
+ 	/scripts/restartsrv httpd &> /dev/null
  
  	echo ""
  	echo ""
@@ -59,7 +59,7 @@ function build_ssl_vhosts {
 
 	echo "=== Building SSL vhost for all cpanel users ==="
  
-	cp -R scripts/* /etc/nginx/scripts/
+	cp -R scripts/* /etc/nginx/scripts
         chmod +x /etc/nginx/scripts/*
  	mkdir -p /etc/nginx/scripts /etc/nginx/vhost.ssl.d /etc/nginx/ssl.cert.d
  	/etc/nginx/scripts/build-ssl-vhosts
@@ -216,12 +216,12 @@ uninstall() {
  	echo "=== Switch Apache SSL back to port 443 ==="
  
  	if [ -f /usr/local/cpanel/bin/whmapi1 ]; then
- 		/usr/local/cpanel/bin/whmapi1 set_tweaksetting key=apache_ssl_port value=0.0.0.0:443
+ 		/usr/local/cpanel/bin/whmapi1 set_tweaksetting key=apache_ssl_port value=0.0.0.0:443 &> /dev/null
  	else
  		if grep -Fxq "apache_ssl_port=" /var/cpanel/cpanel.config
  		then
  			sed -i 's/^apache_ssl_port=.*/apache_ssl_port=0.0.0.0:443/' /var/cpanel/cpanel.config
- 			/usr/local/cpanel/whostmgr/bin/whostmgr2 --updatetweaksettings
+ 			/usr/local/cpanel/whostmgr/bin/whostmgr2 --updatetweaksettings &> /dev/null
  		else
  			echo "apache_ssl_port=0.0.0.0:443" >> /var/cpanel/cpanel.config
  		fi
@@ -231,9 +231,9 @@ uninstall() {
  	echo ""
  
  	echo "=== Distill changes in Apache's configuration and restart Apache ==="
- 	/usr/local/cpanel/bin/apache_conf_distiller --update
- 	/scripts/rebuildhttpdconf
- 	/scripts/restartsrv httpd
+ 	/usr/local/cpanel/bin/apache_conf_distiller --update &> /dev/null
+ 	/scripts/rebuildhttpdconf &> /dev/null
+ 	/scripts/restartsrv httpd &> /dev/null
 
 	replace 'include /etc/nginx/vhost.ssl.d/*.conf;' '' -- /etc/nginx/nginx.conf &> /dev/null
  
