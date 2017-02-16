@@ -161,7 +161,7 @@ EOF
 create_ssl_pem() {
 	# create nginx SSL pem for all domains
 	for domains in $(cat /etc/localdomains | cut -d: -f1); do
-	 	python $nginx_path/scripts/fix-ssl.py $domains #&> /dev/null;
+	 	python $nginx_path/scripts/fix-ssl.py $domains &> /dev/null;
 	done
 }
 
