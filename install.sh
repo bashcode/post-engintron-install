@@ -8,6 +8,7 @@ ACTION=$1
 RED='\033[01;31m'
 GREEN='\033[01;32m'
 RESET='\033[0m'
+nginx_path="/etc/nginx"
 
 options() {
 echo $"
@@ -30,7 +31,7 @@ echo -e "Options:
 
 function apache_ssl_change_port {
  
- 	echo "=== Switch Apache SSL to port 1443, distill changes & restart Apache ==="
+ 	echo "[+] Switch Apache SSL to port 1443, distill changes & restart Apache"
  
  	if [ -f /usr/local/cpanel/bin/whmapi1 ]; then
  		/usr/local/cpanel/bin/whmapi1 set_tweaksetting key=apache_ssl_port value=0.0.0.0:1443 &> /dev/null
@@ -44,7 +45,7 @@ function apache_ssl_change_port {
  		fi
  	fi
  
- 	echo "=== Distill changes in Apache's configuration and restart Apache ==="
+ 	echo "[+] Distill changes in Apache's configuration and restart Apache"
  	/usr/local/cpanel/bin/apache_conf_distiller --update &> /dev/null
  	/scripts/rebuildhttpdconf &> /dev/null
  	/scripts/restartsrv httpd &> /dev/null
@@ -53,7 +54,7 @@ function apache_ssl_change_port {
 
 function build_ssl_vhosts {
 
-	echo "=== Building SSL vhost for all cpanel users ==="
+	echo "[+]Building SSL vhost for all cpanel users"
  
 	cp -R scripts/* /etc/nginx/scripts
         chmod +x /etc/nginx/scripts/*
@@ -212,7 +213,7 @@ service nginx restart
 
 uninstall() {
  
- 	echo "=== Switch Apache SSL back to port 443 ==="
+ 	echo "[+] Switch Apache SSL back to port 443"
  
  	if [ -f /usr/local/cpanel/bin/whmapi1 ]; then
  		/usr/local/cpanel/bin/whmapi1 set_tweaksetting key=apache_ssl_port value=0.0.0.0:443 &> /dev/null
@@ -226,7 +227,7 @@ uninstall() {
  		fi
  	fi
  
- 	echo "=== Distill changes in Apache's configuration and restart Apache ==="
+ 	echo "[+] Distill changes in Apache's configuration and restart Apache"
  	/usr/local/cpanel/bin/apache_conf_distiller --update &> /dev/null
  	/scripts/rebuildhttpdconf &> /dev/null
  	/scripts/restartsrv httpd &> /dev/null
