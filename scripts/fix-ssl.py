@@ -148,10 +148,10 @@ def build_ssl_cert(domain):
         with open(cert)as certfile:
             pem=certfile.read()
         if os.path.exists(cafile):
-            makeca="ln -sf "+cafile+ " _usr_local_nginx_conf_ssl.ca.d_"+domain+"_ca-bundle"
-            makeca="ln -sf "+cafile+ "/etc/nginx/ssl.cert.d/"+domain+"_ca-bundle"
-            subprocess.call(makeca,shell=True)
-            print "Creating CA-Bundle For "+domain+" /etc/nginx/ssl.cert.d/"+domain+"_ca-bundle"
+            #makeca="ln -sf "+cafile+ " _usr_local_nginx_conf_ssl.ca.d_"+domain+"_ca-bundle"
+            #makeca="ln -sf "+cafile+ "/etc/nginx/ssl.cert.d/"+domain+"_ca-bundle"
+            #subprocess.call(makeca,shell=True)
+            #print "Creating CA-Bundle For "+domain+" /etc/nginx/ssl.cert.d/"+domain+"_ca-bundle"
             pem += "\n"
             with open(cafile,'r')as cafile:
                 pem += cafile.read()
@@ -161,10 +161,10 @@ def build_ssl_cert(domain):
             writecrt.write(pem)
         if os.path.exists(key):
 	    print "KEY ",key
-            makekey="ln -sf "+key+" _usr_local_nginx_conf_ssl.key.d_"+domain+"_key"
-	    makekey="ln -sf "+key+" /etc/nginx/ssl.cert.d/"+domain+"_key"
-            subprocess.call(makekey,shell=True)
-            print "Creating KEY File  For "+domain+" /etc/nginx/ssl.cert.d/"+domain+"_key"
+            #makekey="ln -sf "+key+" _usr_local_nginx_conf_ssl.key.d_"+domain+"_key"
+	    #makekey="ln -sf "+key+" /etc/nginx/ssl.cert.d/"+domain+"_key"
+            #subprocess.call(makekey,shell=True)
+            #print "Creating KEY File  For "+domain+" /etc/nginx/ssl.cert.d/"+domain+"_key"
     else:
         print "SSl Configuration file is missing "
         sys.exit()

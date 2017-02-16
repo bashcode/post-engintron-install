@@ -1,8 +1,29 @@
 #!/bin/bash
 #############################################################
 # post engintron install for automated HTTP/2 configuration #
-#       by Xtudio Networks SL - https://sered.net			#
+#       by Xtudio Networks SL - https://sered.net	    #
 #############################################################
+
+ACTION=$1
+
+options() {
+echo $"
+   ____                             ___
+  6MMMMb\    Xtudio Networks SL      MM
+ 6M            engintron HTTP/2      MM
+ MM     ____   ___  __   ____    ____MM
+ YM.   6MMMMb   MM 6MM  6MMMMb  6MMMMMM
+ "
+
+echo -e "Options:
+
+	-install
+    	-uninstall"
+	
+	printf "\n"
+    
+ exit 0
+ }
 
 function apache_ssl_change_port {
  
@@ -181,7 +202,50 @@ http {
 EOF
 }
  
+function install() {
 apache_ssl_change_port
 build_ssl_vhosts
 nGinxConf
+}
+
+uninstall() {
+ 
+ 	echo "=== Switch Apache SSL back to port 443 ==="
+ 
+ 	if [ -f /usr/local/cpanel/bin/whmapi1 ]; then
+ 		/usr/local/cpanel/bin/whmapi1 set_tweaksetting key=apache_ssl_port value=0.0.0.0:443
+ 	else
+ 		if grep -Fxq "apache_ssl_port=" /var/cpanel/cpanel.config
+ 		then
+ 			sed -i 's/^apache_ssl_port=.*/apache_ssl_port=0.0.0.0:443/' /var/cpanel/cpanel.config
+ 			/usr/local/cpanel/whostmgr/bin/whostmgr2 --updatetweaksettings
+ 		else
+ 			echo "apache_ssl_port=0.0.0.0:443" >> /var/cpanel/cpanel.config
+ 		fi
+ 	fi
+ 
+ 	echo ""
+ 	echo ""
+ 
+ 	echo "=== Distill changes in Apache's configuration and restart Apache ==="
+ 	/usr/local/cpanel/bin/apache_conf_distiller --update
+ 	/scripts/rebuildhttpdconf
+ 	/scripts/restartsrv httpd
+ 
+ 	echo ""
+ 	echo ""
+ 
+}
+
+
+
+[ -z $ACTION ] && options && exit 1
+
+case $ACTION in
+	"-install")             	  install;;
+	"-uninstall")         	  uninstall;;
+	*)                    options;;
+esac
+
+exit 0
 
