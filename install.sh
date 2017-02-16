@@ -206,6 +206,9 @@ function install() {
 apache_ssl_change_port
 build_ssl_vhosts
 nGinxConf
+
+echo "Restarting nginx"
+service nginx restart
 }
 
 uninstall() {
