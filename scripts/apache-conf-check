@@ -1,0 +1,82 @@
+#!/bin/bash
+#
+# Apache configuration change check
+
+# Checks for changes in the servers Apache configuration
+# and if changes are detected it will rebuild the Nginx vhosts
+#
+# You would generally want to run this as a cronjob so that
+# any new domains which are added and/or removed cause the
+# script to rebuild the Nginx vhosts.
+#
+# Example cronjob to run this script every minute:
+# * * * * * /etc/nginx/scripts/apache-conf-check &> /dev/null
+#
+###############################################################
+
+## Nginx install path (e.g. /etc/nginx)
+nginx_path="/etc/nginx"
+
+## Path to Nginx ssl vhost build script
+nginx_ssl_vhost_script="/etc/nginx/scripts/build-ssl-vhosts"
+
+# ssl fix script
+ssl_fix_script="/etc/nginx/scripts/fix-ssl.py"
+
+# domain list
+dom_list=( $(find /var/cpanel/userdata/$user -type f ! -name '*_SSL' -a ! -name '*php-fpm.yaml' -a ! -name '*.cache' -a ! -name '*.db' -a ! -name cache.stor -a ! -name cache -a ! -name '*.json' -a ! -name main | awk -F'/' '{print $NF}') )
+
+## Path to Apache configuration (httpd.conf)
+apache_conf="/etc/apache2/conf/httpd.conf"
+
+########################################################
+####### DO NOT MODIFY ANYTHING BELOW THIS LINE! ########
+########################################################
+initial() {
+	if [ ! -d $nginx_path ]; then
+		echo "[!] Error! Nginx path does not exist!"
+		exit 1
+	fi
+	if [ ! -f $nginx_ssl_vhost_script ]; then
+		echo "[!] Error! Nginx ssl vhost script does not exist!"
+		exit 1
+	fi
+	if [ ! -f $ssl_fix_script ]; then
+		echo "[!] Error! Nginx ssl python fix script does not exist!"
+		exit 1
+	fi
+	if [ ! -f $apache_conf ]; then
+		echo "[!] Error! Apache configuration does not exist!"
+		exit 1
+	fi
+}
+check_conf() {
+	if [ -f $nginx_path/.apache.md5sum ]; then
+		old_md5sum=$( cat $nginx_path/.apache.md5sum )
+		cur_md5sum=$( md5sum $apache_conf | awk {'print $1'} )
+		if [ $old_md5sum = $cur_md5sum ]; then
+			echo "[+] No changes detected. md5sum matches."
+		else
+			echo "[!] md5sum mismatch!"
+			echo "[!] old: $old_md5sum cur: $cur_md5sum"
+			echo -n "[+] Rebuilding Nginx vhosts .. "
+			$nginx_vhost_script
+			$nginx_ssl_vhost_script
+			python  $nginx_path/scripts/fix-ssl.py $dom_list
+			echo "done."
+			echo $cur_md5sum > $nginx_path/.apache.md5sum
+			service nginx reload
+		fi
+	else
+		echo -ne "[!] No previous md5sum recorded, rebuilding Nginx vhosts .. \n"
+		$nginx_vhost_script
+		$nginx_ssl_vhost_script
+		python  $nginx_path/scripts/fix-ssl.py $dom_list
+		echo "done."
+		cur_md5sum=$( md5sum $apache_conf | awk {'print $1'} )
+		echo $cur_md5sum > $nginx_path/.apache.md5sum
+		service nginx restart
+	fi
+}
+initial
+check_conf

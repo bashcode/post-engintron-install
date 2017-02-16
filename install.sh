@@ -5,6 +5,9 @@
 #############################################################
 
 ACTION=$1
+RED='\033[01;31m'
+GREEN='\033[01;32m'
+RESET='\033[0m'
 
 options() {
 echo $"
@@ -41,17 +44,10 @@ function apache_ssl_change_port {
  		fi
  	fi
  
- 	echo ""
- 	echo ""
- 
  	echo "=== Distill changes in Apache's configuration and restart Apache ==="
  	/usr/local/cpanel/bin/apache_conf_distiller --update &> /dev/null
  	/scripts/rebuildhttpdconf &> /dev/null
  	/scripts/restartsrv httpd &> /dev/null
- 
- 	echo ""
- 	echo ""
- 
 }
 
 
@@ -207,6 +203,9 @@ apache_ssl_change_port
 build_ssl_vhosts
 nGinxConf
 
+echo "[+] Finished installing post-engintron-install!"
+echo -e "[+] Add the following cronjob \"$GREEN * * * * * $nginx_path/scripts/apache-conf-check &>/dev/null $RESET\" to root's crontab."
+
 echo "Restarting nginx"
 service nginx restart
 }
@@ -227,21 +226,15 @@ uninstall() {
  		fi
  	fi
  
- 	echo ""
- 	echo ""
- 
  	echo "=== Distill changes in Apache's configuration and restart Apache ==="
  	/usr/local/cpanel/bin/apache_conf_distiller --update &> /dev/null
  	/scripts/rebuildhttpdconf &> /dev/null
  	/scripts/restartsrv httpd &> /dev/null
 
 	replace 'include /etc/nginx/vhost.ssl.d/*.conf;' '' -- /etc/nginx/nginx.conf &> /dev/null
- 
- 	echo ""
- 	echo ""
- 
-}
 
+	echo "[+] Finished removing post-engintron-install!"
+	echo -e "[+] Please remove the following cronjob \"$GREEN * * * * * $nginx_path/scripts/apache-conf-check &>/dev/null $RESET\" from root's crontab if you set it up."
 
 
 [ -z $ACTION ] && options && exit 1
