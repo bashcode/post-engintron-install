@@ -234,6 +234,8 @@ uninstall() {
  	/usr/local/cpanel/bin/apache_conf_distiller --update
  	/scripts/rebuildhttpdconf
  	/scripts/restartsrv httpd
+
+	replace 'include /etc/nginx/vhost.ssl.d/*.conf;' '' -- /etc/nginx/nginx.conf &> /dev/null
  
  	echo ""
  	echo ""
