@@ -56,7 +56,7 @@ function build_ssl_vhosts {
 
 	echo "[+]Building SSL vhost for all cpanel users"
  
-	cp -R scripts/* /etc/nginx/scripts
+	cp -R scripts /etc/nginx/scripts
         chmod +x /etc/nginx/scripts/*
  	mkdir -p /etc/nginx/scripts /etc/nginx/vhost.ssl.d /etc/nginx/ssl.cert.d
  	/etc/nginx/scripts/build-ssl-vhosts
