@@ -15,7 +15,7 @@ nginx_path="/etc/nginx"
 nginx_conf_path="$nginx_path"
 
 ## Port Apache is configured to listen on
-apache_port="80"
+apache_port="1443"
 
 # new route for SSL pem
 ssl_pem_path="$nginx_path/ssl.cert.d"
@@ -93,7 +93,7 @@ server {
     }
     # Access all cpanel services
     location ~* ^/(cpanel|webmail|whm|bandwidth|img-sys|java-sys|mailman/archives|pipermail|sys_cpanel|cgi-sys|mailman) {
-        proxy_pass https://$s_ip:80;
+        proxy_pass https://$s_ip:1443;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
